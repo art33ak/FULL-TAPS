@@ -1,0 +1,835 @@
+```html
+<!DOCTYPE html>
+<html lang="hy" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ARM Tap - Telegram Mini App</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            background-color: #080a10;
+            color: #ffffff;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(217, 4, 41, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(0, 119, 182, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 0% 50%, rgba(247, 127, 0, 0.15) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        /* Modern Glass Cards */
+        .glass-card {
+            background: rgba(18, 24, 38, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            width: 100%;
+        }
+
+        .glass-card-glow {
+            background: rgba(22, 30, 48, 0.92);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 183, 3, 0.3);
+            box-shadow: 0 0 25px rgba(255, 183, 3, 0.2);
+        }
+
+        /* 3D Coin Button */
+        .coin-3d-btn {
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #ffd166 0%, #f77f00 50%, #b35900 100%);
+            border: 6px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 15px 35px rgba(247, 127, 0, 0.45),
+                inset 0 10px 20px rgba(255, 255, 255, 0.6),
+                inset 0 -10px 20px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.08s ease-out;
+            position: relative;
+            touch-action: manipulation;
+        }
+
+        .coin-3d-btn:active {
+            transform: scale(0.92) rotateX(10deg);
+            box-shadow: 
+                0 6px 15px rgba(247, 127, 0, 0.6),
+                inset 0 4px 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Tap Float Text */
+        .tap-float-num {
+            position: absolute;
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffd166;
+            pointer-events: none;
+            animation: floatUpFade 0.8s forwards ease-out;
+            text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9), 0 0 10px rgba(255, 209, 102, 0.8);
+            z-index: 100;
+        }
+
+        @keyframes floatUpFade {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            50% { transform: translateY(-35px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-70px) scale(1.3); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="pb-24 text-white selection:bg-amber-500/30">
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 bg-[#080a10]/95 backdrop-blur-md px-3 py-2.5 border-b border-white/10 w-full">
+        <div class="max-w-md mx-auto flex items-center justify-between gap-1.5">
+            <!-- User Info -->
+            <div class="flex items-center gap-2 min-w-0">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-[#d90429] via-[#0077b6] to-[#f77f00] p-0.5 shrink-0">
+                    <div class="w-full h-full bg-[#0d121f] rounded-full flex items-center justify-center font-black text-sm text-amber-400" id="userAvatar">
+                        🇦🇲
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-extrabold text-xs text-white truncate max-w-[90px]" id="userName">ARM Tap</span>
+                        <span class="px-1.5 py-0.2 text-[9px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full tracking-wider" id="userBadge">BRONZE</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 truncate" id="userHandle">@player_arm</div>
+                </div>
+            </div>
+
+            <!-- Controls (Lang, Wallet, Admin) -->
+            <div class="flex items-center gap-1.5 shrink-0">
+                <!-- Lang Picker -->
+                <div class="flex bg-white/5 p-0.5 rounded-lg border border-white/10 text-[10px]">
+                    <button onclick="changeLang('hy')" id="lang-hy" class="px-1.5 py-0.5 rounded-md font-bold transition-all bg-amber-500 text-black">🇦🇲</button>
+                    <button onclick="changeLang('en')" id="lang-en" class="px-1.5 py-0.5 rounded-md font-bold transition-all text-gray-400">🇬🇧</button>
+                    <button onclick="changeLang('ru')" id="lang-ru" class="px-1.5 py-0.5 rounded-md font-bold transition-all text-gray-400">🇷🇺</button>
+                </div>
+
+                <!-- Connect Wallet -->
+                <button onclick="toggleWallet()" id="walletBtn" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-extrabold text-[11px] shadow-md active:scale-95 transition-all">
+                    <i class="fa-solid fa-wallet text-[10px]"></i>
+                    <span id="walletText" data-i18n="connect_wallet">Միացնել</span>
+                </button>
+
+                <!-- Admin Button -->
+                <button onclick="openAdminPanel()" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-amber-400 active:scale-90 transition-all shrink-0">
+                    <i class="fa-solid fa-sliders text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APP WRAPPER -->
+    <main class="w-full max-w-md mx-auto px-3 pt-3 flex-1 flex flex-col justify-start">
+
+        <!-- LEVEL / PROGRESS BAR CARD -->
+        <section class="glass-card p-3 mb-3">
+            <div class="flex justify-between items-center text-xs font-bold mb-1.5">
+                <span class="text-amber-400 flex items-center gap-1">
+                    <i class="fa-solid fa-layer-group text-xs"></i>
+                    <span data-i18n="level_title">Մակարդակ 1: Novice</span>
+                </span>
+                <span class="text-gray-400 text-[11px]">
+                    <span data-i18n="next_level">Հաջորդը:</span> <span class="text-white font-extrabold">Bronze</span>
+                </span>
+            </div>
+            <div class="w-full h-2 bg-black/50 rounded-full overflow-hidden border border-white/10 p-0.5">
+                <div id="levelProgressBar" class="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-300 rounded-full w-[25%] transition-all duration-300"></div>
+            </div>
+        </section>
+
+        <!-- VIEW 1: TAP GAME (MAIN SCREEN) -->
+        <div id="view-tap" class="view-tab flex-1 flex flex-col justify-between w-full">
+            
+            <!-- Balance Banner -->
+            <div class="text-center my-1.5">
+                <div class="text-[10px] uppercase tracking-widest text-gray-400 font-extrabold mb-0.5" data-i18n="arm_balance">ARM Հաշվեկշիռ</div>
+                <div class="text-3xl sm:text-4xl font-black text-white flex items-center justify-center gap-2 drop-shadow-md">
+                    <i class="fa-solid fa-coins text-amber-400 text-2xl sm:text-3xl"></i>
+                    <span id="balanceText">1,250</span>
+                </div>
+            </div>
+
+            <!-- Centered Coin Tap Target -->
+            <div class="relative flex justify-center items-center my-4 sm:my-6 w-full" id="tapArea">
+                <div class="coin-3d-btn w-48 h-48 sm:w-56 sm:h-56" id="coinButton" onclick="handleCoinTap(event)">
+                    <!-- Flag Icon -->
+                    <div class="w-20 h-12 rounded-md overflow-hidden shadow-xl flex flex-col mb-1 border border-white/30">
+                        <div class="h-1/3 bg-[#d90429]"></div>
+                        <div class="h-1/3 bg-[#0077b6]"></div>
+                        <div class="h-1/3 bg-[#f77f00]"></div>
+                    </div>
+                    <span class="text-2xl font-black text-white tracking-widest drop-shadow-md">ARM</span>
+                </div>
+            </div>
+
+            <!-- Energy Bar -->
+            <section class="glass-card p-3 mb-3">
+                <div class="flex justify-between items-center text-xs font-bold mb-1.5">
+                    <div class="flex items-center gap-1.5 text-amber-400">
+                        <i class="fa-solid fa-bolt text-xs animate-pulse"></i>
+                        <span class="text-white font-extrabold text-[11px]" data-i18n="energy_title">Էներգիա (Energy)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-white font-extrabold text-xs" id="energyText">1000 / 1000</span>
+                        <span class="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold">+1/5վ</span>
+                    </div>
+                </div>
+                <div class="w-full h-2.5 bg-black/50 rounded-full overflow-hidden border border-white/10 p-0.5">
+                    <div id="energyFill" class="h-full bg-gradient-to-r from-yellow-500 via-amber-500 to-red-500 rounded-full w-full transition-all duration-200"></div>
+                </div>
+            </section>
+
+            <!-- Quick Action Cards -->
+            <div class="grid grid-cols-2 gap-2.5 mb-2 w-full">
+                <div onclick="switchTab('daily')" class="glass-card p-2.5 flex items-center gap-2.5 cursor-pointer hover:border-amber-500/50 transition-all active:scale-95">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center text-white text-base shadow-md shrink-0">
+                        <i class="fa-solid fa-gift"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-[11px] font-extrabold text-gray-200 truncate" data-i18n="daily_reward_btn">Օրական Բոնուս</div>
+                        <div class="text-[10px] font-bold text-amber-400 truncate" data-i18n="daily_reward_sub">Daily Reward</div>
+                    </div>
+                </div>
+
+                <div onclick="switchTab('tasks')" class="glass-card p-2.5 flex items-center gap-2.5 cursor-pointer hover:border-cyan-500/50 transition-all active:scale-95">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white text-base shadow-md shrink-0">
+                        <i class="fa-solid fa-bullseye"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-[11px] font-extrabold text-gray-200 truncate" data-i18n="tasks_btn">Առաջադրանքներ</div>
+                        <div class="text-[10px] font-bold text-cyan-400 truncate" data-i18n="tasks_sub">Earn Tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: TASKS TAB -->
+        <div id="view-tasks" class="view-tab hidden w-full">
+            <div class="glass-card p-3.5 mb-3">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-black flex items-center gap-2 text-white">
+                        <i class="fa-solid fa-list-check text-amber-400"></i>
+                        <span data-i18n="task_center">Առաջադրանքներ</span>
+                    </h2>
+                    <span class="text-[10px] font-extrabold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30" id="taskCountBadge">0 Tasks</span>
+                </div>
+                <p class="text-[11px] text-gray-400 mb-3" data-i18n="task_desc">Կատարեք առաջադրանքները և ստացեք ակնթարթային +ARM մետաղադրամներ։</p>
+
+                <div class="space-y-2" id="publicTasksList"></div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: DAILY BONUS TAB -->
+        <div id="view-daily" class="view-tab hidden w-full">
+            <div class="glass-card p-3.5">
+                <h2 class="text-sm font-black mb-1 flex items-center gap-2 text-amber-400">
+                    <i class="fa-solid fa-calendar-days"></i> <span data-i18n="daily_title">Օրական Բոնուս</span>
+                </h2>
+                <p class="text-[11px] text-gray-400 mb-3" data-i18n="daily_desc">Մտեք հավելված ամեն օր անընդմեջ և ստացեք էլ ավելի շատ ARM։</p>
+
+                <div class="grid grid-cols-4 gap-2 mb-3" id="dailyGrid"></div>
+
+                <button onclick="claimDailyReward()" id="claimDailyBtn" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 font-extrabold text-black rounded-xl shadow-lg active:scale-95 transition-all text-xs">
+                    <i class="fa-solid fa-hand-holding-dollar mr-1"></i> <span data-i18n="claim_btn">Ստանալ Բոնուսը</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 4: RANKS TAB -->
+        <div id="view-ranks" class="view-tab hidden w-full">
+            <div class="glass-card p-3.5">
+                <h2 class="text-sm font-black mb-2 flex items-center gap-2 text-amber-400">
+                    <i class="fa-solid fa-trophy"></i> <span data-i18n="top_players">Լավագույն Խաղացողներ</span>
+                </h2>
+                <div class="space-y-1.5" id="leaderboardList"></div>
+            </div>
+        </div>
+
+        <!-- VIEW 5: TOKEN TAB -->
+        <div id="view-token" class="view-tab hidden w-full">
+            <div class="glass-card p-4 text-center">
+                <div class="w-14 h-14 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xl mx-auto mb-2">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </div>
+                <h2 class="text-base font-black text-white mb-1">ARM Token & STON.fi DEX</h2>
+                <p class="text-[11px] text-gray-400 mb-3" data-i18n="dex_desc">Պատրաստվեք ARM տոկենի Airdrop-ին և TON բլոկչեյնում փոխանակմանը։</p>
+
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div class="bg-black/40 p-2.5 rounded-xl border border-white/5">
+                        <div class="text-[10px] text-gray-400" data-i18n="offchain_pts">Խաղային Միավորներ</div>
+                        <div class="text-sm font-black text-amber-400" id="tokenOffChainVal">1,250 ARM</div>
+                    </div>
+                    <div class="bg-black/40 p-2.5 rounded-xl border border-white/5">
+                        <div class="text-[10px] text-gray-400" data-i18n="onchain_bal">On-Chain TON ARM</div>
+                        <div class="text-sm font-black text-cyan-400">0.00 ARM</div>
+                    </div>
+                </div>
+
+                <!-- Referral Section inside Token Tab -->
+                <div class="bg-black/30 p-3 rounded-xl border border-white/10 text-left mb-3">
+                    <div class="text-xs font-bold text-white mb-1">👥 Հրավիրիր ընկերների (Referral)</div>
+                    <div class="text-[10px] text-gray-400 mb-2">Ստացիր +2,500 ARM ամեն հրավիրած ընկերոջ համար։</div>
+                    <div class="flex gap-2">
+                        <input type="text" readonly value="https://t.me/arm_tap_bot?start=ref123" class="w-full bg-[#0d121f] border border-white/10 rounded-lg p-1.5 text-[10px] text-amber-400">
+                        <button onclick="copyRefLink()" class="px-3 py-1.5 bg-amber-500 text-black font-extrabold rounded-lg text-xs shrink-0">Պատճենել</button>
+                    </div>
+                </div>
+
+                <button disabled class="w-full py-2.5 bg-white/10 text-gray-400 font-extrabold rounded-xl text-xs cursor-not-allowed border border-white/10">
+                    🚀 Airdrop & Swap Coming Soon
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ADMIN PANEL MODAL -->
+    <div id="adminModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3">
+        <div class="glass-card-glow w-full max-w-md max-h-[90vh] overflow-y-auto p-4 rounded-2xl relative border border-cyan-500/40">
+            <!-- Header -->
+            <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-user-shield text-cyan-400 text-base"></i>
+                    <span class="font-extrabold text-sm text-white" data-i18n="admin_title">Ադմին Պանել (Admin Panel)</span>
+                </div>
+                <button onclick="closeAdminPanel()" class="text-gray-400 hover:text-white text-base w-7 h-7 rounded-full bg-white/5 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- FORM -->
+            <div class="bg-black/50 p-3 rounded-xl border border-white/10 mb-3">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-1.5 text-cyan-400 font-extrabold text-xs">
+                        <i class="fa-solid fa-plus-square"></i>
+                        <span data-i18n="admin_create_task">Ավելացնել Նոր Առաջադրանք</span>
+                    </div>
+                    <span class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded font-bold" id="adminTotalTasksBadge">0 Tasks</span>
+                </div>
+
+                <form id="adminTaskForm" onsubmit="handleCreateTask(event)" class="space-y-2 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-0.5 text-[10px]" data-i18n="admin_label_title">Վերնագիր (Title)*</label>
+                            <input type="text" id="taskTitleInput" required placeholder="օր. Join Telegram" class="w-full bg-[#0b0f19] border border-white/15 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-0.5 text-[10px]" data-i18n="admin_label_reward">Պարգև (+ARM)*</label>
+                            <input type="number" id="taskRewardInput" required placeholder="5000" class="w-full bg-[#0b0f19] border border-white/15 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-0.5 text-[10px]" data-i18n="admin_label_icon">Էմոջի / Icon*</label>
+                            <input type="text" id="taskIconInput" required placeholder="📢" class="w-full bg-[#0b0f19] border border-white/15 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-0.5 text-[10px]" data-i18n="admin_label_category">Կատեգորիա</label>
+                            <select id="taskCategoryInput" class="w-full bg-[#0b0f19] border border-white/15 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                                <option value="Telegram">Telegram</option>
+                                <option value="YouTube">YouTube</option>
+                                <option value="Partner">Partner</option>
+                                <option value="On-chain">On-chain</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-300 font-bold mb-0.5 text-[10px]" data-i18n="admin_label_desc">Նկարագրություն</label>
+                        <input type="text" id="taskDescInput" placeholder="օր. Միացեք մեր ալիքին" class="w-full bg-[#0b0f19] border border-white/15 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-300 font-bold mb-0.5 text-[10px]" data-i18n="admin_label_url">Հղում (Target URL)</label>
+                        <input type="url" id="taskUrlInput" required placeholder="https://t.me/arm_tap_official" class="w-full bg-[#0b0f19] border border-white/15 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400 text-xs">
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button type="submit" class="flex-1 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 font-black text-white rounded-lg active:scale-95 transition-all text-xs">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> <span data-i18n="admin_btn_save">Պահպանել</span>
+                        </button>
+                        <button type="button" onclick="closeAdminPanel()" class="px-3 py-2 bg-white/10 text-gray-300 font-bold rounded-lg text-xs" data-i18n="admin_btn_cancel">
+                            Չեղարկել
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Existing Tasks -->
+            <div class="space-y-1.5">
+                <div class="text-[11px] font-bold text-gray-300 mb-1" data-i18n="admin_managed_tasks">Կառավարվող Առաջադրանքներ</div>
+                <div id="adminTasksList" class="space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVBAR -->
+    <nav class="fixed bottom-0 inset-x-0 bg-[#080a10]/95 backdrop-blur-xl border-t border-white/10 py-2 px-2 z-40">
+        <div class="max-w-md mx-auto flex justify-around items-center">
+            <button onclick="switchTab('tap')" id="nav-tap" class="nav-btn flex flex-col items-center gap-0.5 text-amber-400 transition-all">
+                <i class="fa-solid fa-hand-pointer text-base"></i>
+                <span class="text-[10px] font-extrabold" data-i18n="nav_tap">Tap</span>
+            </button>
+
+            <button onclick="switchTab('tasks')" id="nav-tasks" class="nav-btn flex flex-col items-center gap-0.5 text-gray-400 transition-all">
+                <i class="fa-solid fa-bullseye text-base"></i>
+                <span class="text-[10px] font-extrabold" data-i18n="nav_tasks">Tasks</span>
+            </button>
+
+            <button onclick="switchTab('daily')" id="nav-daily" class="nav-btn flex flex-col items-center gap-0.5 text-gray-400 transition-all">
+                <i class="fa-solid fa-gift text-base"></i>
+                <span class="text-[10px] font-extrabold" data-i18n="nav_daily">Daily</span>
+            </button>
+
+            <button onclick="switchTab('ranks')" id="nav-ranks" class="nav-btn flex flex-col items-center gap-0.5 text-gray-400 transition-all">
+                <i class="fa-solid fa-trophy text-base"></i>
+                <span class="text-[10px] font-extrabold" data-i18n="nav_ranks">Ranks</span>
+            </button>
+
+            <button onclick="switchTab('token')" id="nav-token" class="nav-btn flex flex-col items-center gap-0.5 text-gray-400 transition-all">
+                <i class="fa-solid fa-arrows-rotate text-base"></i>
+                <span class="text-[10px] font-extrabold" data-i18n="nav_token">Token</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- JS LOGIC -->
+    <script>
+        const i18n = {
+            hy: {
+                connect_wallet: "Միացնել",
+                level_title: "Մակարդակ 1: Novice",
+                next_level: "Հաջորդը:",
+                arm_balance: "ARM Հաշվեկշիռ",
+                energy_title: "Էներգիա (Energy)",
+                daily_reward_btn: "Օրական Բոնուս",
+                daily_reward_sub: "Daily Reward",
+                tasks_btn: "Առաջադրանքներ",
+                tasks_sub: "Earn Tasks",
+                task_center: "Առաջադրանքներ",
+                task_desc: "Կատարեք առաջադրանքները և ստացեք ակնթարթային +ARM մետաղադրամներ։",
+                daily_title: "Օրական Բոնուս",
+                daily_desc: "Մտեք հավելված ամեն օր անընդմեջ և ստացեք էլ ավելի շատ ARM։",
+                claim_btn: "Ստանալ Բոնուսը",
+                top_players: "Լավագույն Խաղացողներ",
+                offchain_pts: "Խաղային Միավորներ",
+                onchain_bal: "On-Chain TON ARM",
+                dex_desc: "Պատրաստվեք ARM տոկենի Airdrop-ին և TON բլոկչեյնում փոխանակմանը։",
+                admin_title: "Ադմին Պանել (Admin Panel)",
+                admin_create_task: "Ավելացնել Նոր Առաջադրանք",
+                admin_label_title: "Վերնագիր (Title)*",
+                admin_label_reward: "Պարգև (+ARM)*",
+                admin_label_icon: "Էմոջի / Icon*",
+                admin_label_category: "Կատեգորիա",
+                admin_label_desc: "Նկարագրություն",
+                admin_label_url: "Հղում (Target URL)",
+                admin_btn_save: "Պահպանել",
+                admin_btn_cancel: "Չեղարկել",
+                admin_managed_tasks: "Կառավարվող Առաջադրանքներ",
+                nav_tap: "Tap",
+                nav_tasks: "Tasks",
+                nav_daily: "Daily",
+                nav_ranks: "Ranks",
+                nav_token: "Token"
+            },
+            en: {
+                connect_wallet: "Connect",
+                level_title: "Level 1: Novice",
+                next_level: "Next:",
+                arm_balance: "ARM Balance",
+                energy_title: "Energy",
+                daily_reward_btn: "Daily Reward",
+                daily_reward_sub: "Daily Reward",
+                tasks_btn: "Earn Tasks",
+                tasks_sub: "Earn Tasks",
+                task_center: "Task Center",
+                task_desc: "Complete tasks and earn instant +ARM coins.",
+                daily_title: "Daily Bonus",
+                daily_desc: "Log in every day without breaking the streak to get more ARM.",
+                claim_btn: "Claim Reward",
+                top_players: "Top Players",
+                offchain_pts: "Game Points",
+                onchain_bal: "On-Chain TON ARM",
+                dex_desc: "Prepare for ARM Token Airdrop and swapping on TON.",
+                admin_title: "Admin Control Panel",
+                admin_create_task: "Create New Task",
+                admin_label_title: "Title*",
+                admin_label_reward: "Reward (+ARM)*",
+                admin_label_icon: "Emoji / Icon*",
+                admin_label_category: "Category",
+                admin_label_desc: "Description",
+                admin_label_url: "Target URL*",
+                admin_btn_save: "Save Task",
+                admin_btn_cancel: "Cancel",
+                admin_managed_tasks: "Managed Tasks",
+                nav_tap: "Tap",
+                nav_tasks: "Tasks",
+                nav_daily: "Daily",
+                nav_ranks: "Ranks",
+                nav_token: "Token"
+            },
+            ru: {
+                connect_wallet: "Кошелек",
+                level_title: "Уровень 1: Novice",
+                next_level: "Далее:",
+                arm_balance: "Баланс ARM",
+                energy_title: "Энергия",
+                daily_reward_btn: "Ежедневный Бонус",
+                daily_reward_sub: "Daily Reward",
+                tasks_btn: "Задания",
+                tasks_sub: "Earn Tasks",
+                task_center: "Центр Заданий",
+                task_desc: "Выполняйте задания и получайте монеты ARM.",
+                daily_title: "Ежедневный Бонус",
+                daily_desc: "Заходите каждый день и получайте еще больше ARM.",
+                claim_btn: "Забрать Бонус",
+                top_players: "Топ Игроков",
+                offchain_pts: "Игровые Очки",
+                onchain_bal: "On-Chain TON ARM",
+                dex_desc: "Подготовка к Airdrop токена ARM и обмену в сети TON.",
+                admin_title: "Панель Администратора",
+                admin_create_task: "Создать Новое Задание",
+                admin_label_title: "Заголовок*",
+                admin_label_reward: "Награда (+ARM)*",
+                admin_label_icon: "Иконка*",
+                admin_label_category: "Категория",
+                admin_label_desc: "Описание",
+                admin_label_url: "Ссылка*",
+                admin_btn_save: "Сохранить",
+                admin_btn_cancel: "Отмена",
+                admin_managed_tasks: "Управление Заданиями",
+                nav_tap: "Тап",
+                nav_tasks: "Задания",
+                nav_daily: "Бонус",
+                nav_ranks: "Топ",
+                nav_token: "Токен"
+            }
+        };
+
+        let state = {
+            balance: 1250,
+            energy: 1000,
+            maxEnergy: 1000,
+            claimedDailyDay: 0,
+            walletConnected: false,
+            lang: 'hy',
+            tasks: [
+                { id: 1, title: "Join ARM Telegram Channel", reward: 5000, icon: "📢", category: "Telegram", desc: "Join official channel", url: "https://t.me", completed: false },
+                { id: 2, title: "Subscribe YouTube Channel", reward: 10000, icon: "🎥", category: "YouTube", desc: "Watch latest video & subscribe", url: "https://youtube.com", completed: false }
+            ]
+        };
+
+        if (localStorage.getItem('arm_app_state_v2')) {
+            try {
+                const saved = JSON.parse(localStorage.getItem('arm_app_state_v2'));
+                state = { ...state, ...saved };
+            } catch (e) {}
+        }
+
+        function saveState() {
+            localStorage.setItem('arm_app_state_v2', JSON.stringify(state));
+            renderUI();
+        }
+
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const u = tg.initDataUnsafe.user;
+                document.getElementById('userName').innerText = u.first_name || "ARM Player";
+                document.getElementById('userHandle').innerText = "@" + (u.username || "player_arm");
+                document.getElementById('userAvatar').innerText = (u.first_name || "A").charAt(0).toUpperCase();
+            }
+        }
+
+        function changeLang(lang) {
+            state.lang = lang;
+            document.querySelectorAll('#lang-hy, #lang-en, #lang-ru').forEach(b => {
+                b.className = "px-1.5 py-0.5 rounded-md font-bold transition-all text-gray-400";
+            });
+            const activeBtn = document.getElementById(`lang-${lang}`);
+            if (activeBtn) activeBtn.className = "px-1.5 py-0.5 rounded-md font-bold transition-all bg-amber-500 text-black";
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[lang] && i18n[lang][key]) {
+                    el.innerText = i18n[lang][key];
+                }
+            });
+            saveState();
+        }
+
+        function handleCoinTap(e) {
+            if (state.energy < 1) return;
+
+            state.balance += 1;
+            state.energy -= 1;
+
+            const tapArea = document.getElementById('tapArea');
+            const floatNum = document.createElement('div');
+            floatNum.className = 'tap-float-num';
+            floatNum.innerText = '+1';
+
+            const rect = tapArea.getBoundingClientRect();
+            const x = e.clientX ? (e.clientX - rect.left) : (rect.width / 2);
+            const y = e.clientY ? (e.clientY - rect.top) : (rect.height / 2);
+
+            floatNum.style.left = `${x}px`;
+            floatNum.style.top = `${y}px`;
+
+            tapArea.appendChild(floatNum);
+            setTimeout(() => floatNum.remove(), 800);
+
+            saveState();
+        }
+
+        setInterval(() => {
+            if (state.energy < state.maxEnergy) {
+                state.energy = Math.min(state.maxEnergy, state.energy + 1);
+                renderUI();
+            }
+        }, 5000);
+
+        function renderUI() {
+            document.getElementById('balanceText').innerText = state.balance.toLocaleString();
+            document.getElementById('tokenOffChainVal').innerText = state.balance.toLocaleString() + " ARM";
+            document.getElementById('energyText').innerText = `${state.energy} / ${state.maxEnergy}`;
+            document.getElementById('energyFill').style.width = `${(state.energy / state.maxEnergy) * 100}%`;
+
+            renderPublicTasks();
+            renderAdminTasks();
+            renderDailyGrid();
+            renderLeaderboard();
+        }
+
+        function renderPublicTasks() {
+            const container = document.getElementById('publicTasksList');
+            container.innerHTML = '';
+            document.getElementById('taskCountBadge').innerText = `${state.tasks.length} Tasks`;
+
+            state.tasks.forEach(t => {
+                const card = document.createElement('div');
+                card.className = "bg-black/40 p-2.5 rounded-xl border border-white/10 flex items-center justify-between gap-2";
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-lg text-amber-400 shrink-0">
+                            ${t.icon || '📢'}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="font-extrabold text-xs text-white truncate">${t.title}</div>
+                            <div class="text-[10px] text-amber-400 font-extrabold">+${t.reward.toLocaleString()} ARM</div>
+                        </div>
+                    </div>
+                    <button onclick="executeTask(${t.id})" ${t.completed ? 'disabled' : ''} class="px-3 py-1 rounded-lg font-black text-xs shrink-0 ${t.completed ? 'bg-white/10 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-black active:scale-95 transition-all'}">
+                        ${t.completed ? 'Done' : 'Start'}
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function executeTask(taskId) {
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task && !task.completed) {
+                if (task.url) window.open(task.url, '_blank');
+                task.completed = true;
+                state.balance += task.reward;
+                saveState();
+            }
+        }
+
+        function openAdminPanel() {
+            document.getElementById('adminModal').classList.remove('hidden');
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+
+        function handleCreateTask(e) {
+            e.preventDefault();
+            const title = document.getElementById('taskTitleInput').value;
+            const reward = parseInt(document.getElementById('taskRewardInput').value);
+            const icon = document.getElementById('taskIconInput').value || '📢';
+            const category = document.getElementById('taskCategoryInput').value;
+            const desc = document.getElementById('taskDescInput').value;
+            const url = document.getElementById('taskUrlInput').value;
+
+            const newTask = {
+                id: Date.now(),
+                title,
+                reward,
+                icon,
+                category,
+                desc,
+                url,
+                completed: false
+            };
+
+            state.tasks.push(newTask);
+            document.getElementById('adminTaskForm').reset();
+            saveState();
+        }
+
+        function renderAdminTasks() {
+            const container = document.getElementById('adminTasksList');
+            container.innerHTML = '';
+            document.getElementById('adminTotalTasksBadge').innerText = `${state.tasks.length} Tasks`;
+
+            state.tasks.forEach(t => {
+                const item = document.createElement('div');
+                item.className = "bg-black/40 p-2 rounded-lg border border-white/10 flex items-center justify-between text-xs";
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span>${t.icon}</span>
+                        <div class="min-w-0">
+                            <div class="font-bold text-white text-[10px] truncate">${t.title}</div>
+                            <div class="text-amber-400 font-extrabold text-[9px]">+${t.reward.toLocaleString()} ARM</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteTask(${t.id})" class="text-red-400 hover:text-red-300 px-2 py-0.5 bg-red-500/10 rounded border border-red-500/20 shrink-0">
+                        <i class="fa-solid fa-trash-can text-[10px]"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function deleteTask(id) {
+            state.tasks = state.tasks.filter(t => t.id !== id);
+            saveState();
+        }
+
+        function renderDailyGrid() {
+            const grid = document.getElementById('dailyGrid');
+            grid.innerHTML = '';
+            const rewards = [1000, 2500, 5000, 10000, 25000, 50000, 100000];
+
+            rewards.forEach((rew, idx) => {
+                const dayNum = idx + 1;
+                const isClaimed = state.claimedDailyDay >= dayNum;
+                const div = document.createElement('div');
+                div.className = `p-2 rounded-xl border text-center ${isClaimed ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-black/40 border-white/10 text-gray-300'}`;
+                div.innerHTML = `
+                    <div class="text-[9px] font-bold">Day ${dayNum}</div>
+                    <div class="text-xs font-black text-amber-400 mt-0.5">+${rew/1000}k</div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function claimDailyReward() {
+            const rewards = [1000, 2500, 5000, 10000, 25000, 50000, 100000];
+            if (state.claimedDailyDay < 7) {
+                state.balance += rewards[state.claimedDailyDay];
+                state.claimedDailyDay += 1;
+                saveState();
+            }
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboardList');
+            container.innerHTML = '';
+            const topPlayers = [
+                { rank: 1, name: "Arman_TON", score: 2500000 },
+                { rank: 2, name: "CryptoKing_AM", score: 1850000 },
+                { rank: 3, name: "Tigran_Tap", score: 1200000 },
+                { rank: 4, name: "Hayk_Whale", score: 980000 },
+                { rank: 5, name: "Anahit_Gamer", score: 750000 }
+            ];
+
+            topPlayers.forEach(p => {
+                const div = document.createElement('div');
+                div.className = "bg-black/40 p-2 rounded-xl border border-white/5 flex items-center justify-between text-xs";
+                div.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="font-black text-amber-400 text-xs w-4">#${p.rank}</span>
+                        <span class="font-bold text-white text-xs">${p.name}</span>
+                    </div>
+                    <span class="font-black text-amber-400 text-xs">${p.score.toLocaleString()} ARM</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-tab').forEach(v => v.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('text-amber-400');
+                b.classList.add('text-gray-400');
+            });
+
+            const activeTab = document.getElementById(`view-${tabId}`);
+            if (activeTab) activeTab.classList.remove('hidden');
+
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.classList.remove('text-gray-400');
+                activeNav.classList.add('text-amber-400');
+            }
+        }
+
+        function toggleWallet() {
+            state.walletConnected = !state.walletConnected;
+            document.getElementById('walletText').innerText = state.walletConnected ? "EQD3...8x9F" : (i18n[state.lang]?.connect_wallet || "Միացնել");
+            saveState();
+        }
+
+        function copyRefLink() {
+            const dummy = document.createElement('textarea');
+            dummy.value = 'https://t.me/arm_tap_bot?start=ref123';
+            document.body.appendChild(dummy);
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+        }
+
+        renderUI();
+        changeLang('hy');
+    </script>
+</body>
+</html>
+```
